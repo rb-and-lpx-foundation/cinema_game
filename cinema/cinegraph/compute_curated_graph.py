@@ -1,6 +1,3 @@
-import pickle
-from cinema import directories
-from cinema.imdb_config import ia
 import pandas as pd
 from cinema.cinegraph.node_types import PersonNode, WorkNode
 
