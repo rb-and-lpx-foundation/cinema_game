@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from art_graph.cinema_data_providers.cache.cached_client import CachedTMDbClient
 from art_graph.cinema_data_providers.tmdb.client import TMDbClient
 from art_graph.cinema_data_providers.tmdb.config import TMDbConfig
+from art_graph.cinema_data_providers.filters import MovieFilter
 
 from .env import load_cinema_game_env
 
@@ -62,4 +63,30 @@ MIN_ACTOR_POPULARITY = {
     "easy": 8,
     "medium": 4,
     "hard": 1,
+}
+
+# Movie quality filters per difficulty. vote_count is the strongest signal for
+# whether a film is widely recognised (see docs/tmdb_fields.md in artist-graph).
+MOVIE_FILTERS = {
+    "easy": MovieFilter(
+        allowed_languages={"en"},
+        min_vote_average=5.5,
+        min_vote_count=500,
+        min_popularity=5.0,
+        excluded_genre_ids={99, 10770},
+    ),
+    "medium": MovieFilter(
+        allowed_languages={"en"},
+        min_vote_average=4.0,
+        min_vote_count=100,
+        min_popularity=3.0,
+        excluded_genre_ids={99, 10770},
+    ),
+    "hard": MovieFilter(
+        allowed_languages={"en"},
+        min_vote_average=0.0,
+        min_vote_count=20,
+        min_popularity=0.0,
+        excluded_genre_ids={99, 10770},
+    ),
 }
