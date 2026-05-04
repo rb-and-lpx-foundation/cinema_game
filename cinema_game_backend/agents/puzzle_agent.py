@@ -7,8 +7,9 @@ No LLM needed here — pure TMDb API calls.
 import random
 import asyncio
 from langsmith import traceable
+from art_graph.cinema_data_providers.filters import MovieFilter
 from art_graph.cinema_data_providers.tmdb.client import TMDbClient
-from ..config import DIFFICULTY_HOPS, MIN_ACTOR_POPULARITY
+from ..config import DIFFICULTY_HOPS, MIN_ACTOR_POPULARITY, MOVIE_FILTERS
 
 
 @traceable(run_type="tool", name="shortcut_check")
@@ -74,6 +75,7 @@ async def _random_walk(
     hops: int,
     min_popularity: float,
     no_repeat_movies: bool = False,
+    movie_filter: MovieFilter | None = None,
 ) -> list[dict] | None:
     """
     Build a path of length `hops` via random walk:
@@ -83,6 +85,7 @@ async def _random_walk(
     Each step: {"type": "actor"|"movie", ...}
 
     When no_repeat_movies=True, the same movie cannot appear twice in the path.
+    When movie_filter is provided, only movies passing the filter are considered.
     """
     path = [
         {
@@ -98,7 +101,9 @@ async def _random_walk(
     for hop in range(hops):
         # Get movies for current actor, sorted by popularity
         movies = await tmdb.get_person_movies(current_actor_id, limit=20)
-        movies = [m for m in movies if m.popularity > 5] or movies
+        if movie_filter:
+            filtered = [m for m in movies if movie_filter.accepts(m)]
+            movies = filtered or movies
 
         # Exclude already-used movies when required
         if no_repeat_movies:
@@ -177,6 +182,7 @@ async def generate_puzzle(tmdb: TMDbClient, difficulty: str = "medium") -> dict:
     hops = random.randint(*hop_range)
     min_pop = MIN_ACTOR_POPULARITY.get(difficulty, 4)
     no_repeat = difficulty == "easy"
+    movie_filter = MOVIE_FILTERS.get(difficulty)
     # Reject only trivially easy puzzles where the two actors share a direct movie.
     # The 2-hop check was too aggressive — popular actors are almost always 2 hops
     # apart, causing medium/hard generation to exhaust all retries.
@@ -185,7 +191,12 @@ async def generate_puzzle(tmdb: TMDbClient, difficulty: str = "medium") -> dict:
     for _ in range(15):
         start_actor = await _pick_popular_actor(tmdb, min_pop)
         path = await _random_walk(
-            tmdb, start_actor, hops, min_pop, no_repeat_movies=no_repeat
+            tmdb,
+            start_actor,
+            hops,
+            min_pop,
+            no_repeat_movies=no_repeat,
+            movie_filter=movie_filter,
         )
         if not path or len(path) < 3:
             continue
