@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cinema_game_backend"
-version = "2.2.2"
+version = "2.3.0"
 description = "Cinema Game — connect actors through shared movies"
 authors = ["Chivon Powers <chivon.powers@gmail.com>", "Reuben Brasher <rkbrasher@gmail.com>"]
 license = "mit"
@@ -15,6 +15,7 @@ anthropic = "^0.40.0"
 python-dotenv = "^1.0.0"
 pydantic = "^2.12.5"
 langsmith = "^0.7.31"
+rapidfuzz = "^3.12.0"
 art-graph = {git = "https://github.com/newexo/artist-graph.git", tag = "v0.2.7"}
 
 [tool.poetry.group.dev.dependencies]
