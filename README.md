@@ -8,7 +8,7 @@ Can you find it faster?
 
 ## How it works
 
-An AI agent (Claude) proposes a puzzle: a start actor, an end actor, and a guaranteed solution path. You play by naming a movie the current actor appeared in, then naming a co-star from that movie. The agent verifies each move in real time using TMDb data and web search — typos and partial names are handled gracefully.
+The backend generates a puzzle: a start actor, an end actor, and a guaranteed solution path. You play by naming a movie the current actor appeared in, then naming a co-star from that movie. Each move is verified in real time using TMDb data and fuzzy string matching — typos and minor misspellings are handled gracefully. An optional LLM fallback resolves harder cases like nicknames ("Larry" for "Laurence").
 
 **Difficulty levels:**
 | Level | Hops | Notes |
@@ -22,8 +22,9 @@ An AI agent (Claude) proposes a puzzle: a start actor, an end actor, and a guara
 | Layer      | Technology                                                                                           |
 |------------|------------------------------------------------------------------------------------------------------|
 | Backend    | FastAPI (Python)                                                                                     |
-| Agent      | Claude claude-sonnet-4-6 via Anthropic SDK                                                           |
-| Movie data | TMDb API via [art-graph](https://github.com/ChiPowers/artist-graph) + Claude web search              |
+| Matching   | [rapidfuzz](https://github.com/rapidfuzz/RapidFuzz) (Levenshtein + WRatio)                          |
+| LLM fallback | Optional, via [reusable-llm-provider](https://github.com/newexo/reusable-llm-provider) (nickname resolution) |
+| Movie data | TMDb API via [art-graph](https://github.com/ChiPowers/artist-graph)                                 |
 | TMDb cache | SQLAlchemy (SQLite locally, Postgres/MySQL in production)                                            |
 | Database   | SQLite (game state)                                                                                  |
 | Tracing    | LangSmith (optional)                                                                                 |
@@ -50,11 +51,8 @@ poetry install --with dev
 Copy `secrets/.env.example` to `secrets/.env` and fill in your keys:
 
 ```
-TMDB_API_KEY=...
-ANTHROPIC_API_KEY=...
-OPENAI_API_KEY=...
-OPENROUTER_API_KEY=...
-GEMINI_API_KEY=...
+TMDB_API_KEY=...          # Required
+ANTHROPIC_API_KEY=...     # Optional — enables LLM fallback for nickname resolution
 ```
 
 **TMDb cache** — one of these must be set or the app will refuse to start:
@@ -139,7 +137,12 @@ See the [frontend repo](https://github.com/ChiPowers/cinema-frontend).
 
 ## Architecture
 
-The backend uses **FastAPI dependency injection** to provide the TMDb client. At startup, `create_tmdb_client()` reads the cache configuration and produces either a `CachedTMDbClient` (backed by SQLAlchemy) or a plain `TMDbClient`. This client is stored on `app.state` and injected into route handlers via `Depends(get_tmdb)`.
+The backend uses **FastAPI dependency injection** to provide the TMDb client and an optional LLM provider. At startup, `create_tmdb_client()` reads the cache configuration and produces either a `CachedTMDbClient` (backed by SQLAlchemy) or a plain `TMDbClient`. If an LLM API key is configured, `create_llm_provider()` creates a provider via reusable-llm-provider. Both are stored on `app.state` and injected into route handlers via `Depends()`.
+
+**Move validation** works in three stages:
+1. **TMDb lookup** — search for the movie and fetch its cast list.
+2. **Fuzzy matching** — rapidfuzz Levenshtein distance + WRatio scoring resolves typos and minor misspellings against the cast list.
+3. **LLM fallback** (optional) — if fuzzy matching fails and an LLM provider is available, an LLM call resolves harder cases like nicknames ("Larry" → "Laurence").
 
 The TMDb cache layer lives in the [art-graph](https://github.com/ChiPowers/artist-graph) library. It caches people, movies, and credits in three tables. The caller (this app) owns the database engine and configuration — art-graph has no opinion about which database backend is used.
 
