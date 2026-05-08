@@ -4,7 +4,7 @@ from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 from cinema_game_backend.main import app
 from cinema_game_backend.database import init_db
-from cinema_game_backend.dependencies import get_tmdb
+from cinema_game_backend.dependencies import get_tmdb, get_llm
 from cinema_game_backend.models.game import ValidationResult
 from art_graph.cinema_data_providers.tmdb_models import Person
 from cinema_game_backend.routes.game import _reached_end
@@ -108,6 +108,14 @@ def mock_tmdb():
     app.dependency_overrides[get_tmdb] = lambda: mock
     yield mock
     app.dependency_overrides.pop(get_tmdb, None)
+
+
+@pytest.fixture(autouse=True)
+def no_llm():
+    """Route tests run without an LLM provider (fuzzy matching only)."""
+    app.dependency_overrides[get_llm] = lambda: None
+    yield
+    app.dependency_overrides.pop(get_llm, None)
 
 
 @pytest.fixture

@@ -13,7 +13,7 @@ from ..models.game import (
 )
 from ..agents.puzzle_agent import generate_puzzle
 from ..agents.validation_agent import validate_move
-from ..dependencies import get_tmdb
+from ..dependencies import get_tmdb, get_llm
 from ..database import save_game, load_game, update_game
 
 router = APIRouter(prefix="/game", tags=["game"])
@@ -79,7 +79,10 @@ async def new_game(difficulty: str = "medium", tmdb: TMDbClient = Depends(get_tm
 @router.post("/{game_id}/move", response_model=MoveResponse)
 @traceable(run_type="chain", name="make_move")
 async def make_move(
-    game_id: str, body: MoveRequest, tmdb: TMDbClient = Depends(get_tmdb)
+    game_id: str,
+    body: MoveRequest,
+    tmdb: TMDbClient = Depends(get_tmdb),
+    llm=Depends(get_llm),
 ):
     game = load_game(game_id)
     if not game:
@@ -104,6 +107,7 @@ async def make_move(
         from_actor,
         body.movie,
         body.next_actor,
+        llm=llm,
         langsmith_extra={"metadata": {"game_id": game_id}},
     )
 
@@ -119,8 +123,10 @@ async def make_move(
             strikes=strikes,
         )
 
-    # Resolve the next actor's TMDb ID for accurate win detection
-    new_actor = await _resolve_actor(tmdb, body.next_actor)
+    # Resolve the next actor's TMDb ID for accurate win detection.
+    # Use the canonical matched name from validation (not the raw player input)
+    # so that misspellings like "Kat Denings" resolve to "Kat Dennings".
+    new_actor = await _resolve_actor(tmdb, result.to_actor_name or body.next_actor)
 
     # Record the move with the canonical TMDb title
     move = Move(

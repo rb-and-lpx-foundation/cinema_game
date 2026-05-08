@@ -4,3 +4,7 @@ from art_graph.cinema_data_providers.tmdb.client import TMDbClient
 
 def get_tmdb(request: Request) -> TMDbClient:
     return request.app.state.tmdb
+
+
+def get_llm(request: Request):
+    return request.app.state.llm
