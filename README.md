@@ -74,6 +74,33 @@ LANGCHAIN_PROJECT=cinema-game
 
 See `secrets/README.md` for more detail.
 
+### LangSmith trace structure
+
+Each player move produces a `validate_move` trace with the following child spans:
+
+```
+validate_move (chain)
+├── resolve_actor (tool)   — from_actor
+│   └── llm_name_match (tool)   — only if fuzzy matching failed and LLM is available
+└── resolve_actor (tool)   — to_actor
+    └── llm_name_match (tool)   — only if fuzzy matching failed and LLM is available
+```
+
+**Reading the traces:**
+
+| What you see | What it means |
+|---|---|
+| `resolve_actor` returns an `ActorMatch` with no `llm_name_match` child | Fuzzy matching succeeded |
+| `resolve_actor` has an `llm_name_match` child that returns an `ActorMatch` | Fuzzy matching failed, LLM resolved the name (e.g. nickname) |
+| `resolve_actor` has an `llm_name_match` child that returns `None` | Both fuzzy matching and LLM failed |
+| `resolve_actor` returns `None` with no `llm_name_match` child | Fuzzy matching failed and no LLM provider is configured |
+
+When the LLM fallback is skipped, the `resolve_actor` span carries explicit metadata:
+- `llm_fallback_skipped: true`
+- `unresolved_query: "<player input>"`
+
+These metadata fields are filterable in the LangSmith UI, making it easy to find moves where an LLM provider would have helped.
+
 ### LLM experiment harness (LangSmith)
 
 Run a model matrix over Cinema Game prompt surfaces and log each model run as a LangSmith experiment:

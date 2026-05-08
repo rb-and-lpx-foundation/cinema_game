@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -6,12 +7,19 @@ from .config import create_tmdb_client, create_llm_provider
 from .database import init_db
 from .routes.game import router as game_router
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     app.state.tmdb = create_tmdb_client()
     app.state.llm = create_llm_provider()
+    if app.state.llm is None:
+        logger.warning(
+            "No LLM provider configured — nickname resolution disabled. "
+            "Set ANTHROPIC_API_KEY to enable LLM fallback for name matching."
+        )
     yield
 
 

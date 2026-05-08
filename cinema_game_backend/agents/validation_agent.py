@@ -8,6 +8,7 @@ e.g. nicknames like "Larry" for "Laurence".
 
 import logging
 from langsmith import traceable
+from langsmith.run_helpers import get_current_run_tree
 from art_graph.cinema_data_providers.tmdb.client import TMDbClient
 from ..matching import find_actor_in_cast, ActorMatch
 from ..models.game import Confidence, ValidationResult
@@ -30,6 +31,7 @@ LLM_NAME_MATCH_PROMPT = (
 )
 
 
+@traceable(run_type="tool", name="llm_name_match")
 def _llm_name_match(llm, query: str, cast_names: list[str]) -> ActorMatch | None:
     """Ask the LLM to resolve a name that fuzzy matching could not."""
     prompt = LLM_NAME_MATCH_PROMPT.format(
@@ -48,6 +50,7 @@ def _llm_name_match(llm, query: str, cast_names: list[str]) -> ActorMatch | None
     return None
 
 
+@traceable(run_type="tool", name="resolve_actor")
 def _resolve_actor(query: str, cast_names: list[str], llm=None) -> ActorMatch | None:
     """Try fuzzy matching first, then LLM fallback if available."""
     match = find_actor_in_cast(query, cast_names)
@@ -55,6 +58,13 @@ def _resolve_actor(query: str, cast_names: list[str], llm=None) -> ActorMatch | 
         return match
     if llm is not None:
         return _llm_name_match(llm, query, cast_names)
+    logger.warning(
+        "Fuzzy matching failed for %r and no LLM fallback is available", query
+    )
+    rt = get_current_run_tree()
+    if rt:
+        rt.metadata["llm_fallback_skipped"] = True
+        rt.metadata["unresolved_query"] = query
     return None
 
 
