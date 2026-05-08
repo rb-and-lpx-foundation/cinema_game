@@ -69,4 +69,6 @@ async def validate_move(
         backdrop_url=movie.backdrop_url,
         from_actor_found=from_match is not None,
         to_actor_found=to_match is not None,
+        from_actor_name=from_match.matched_name if from_match else None,
+        to_actor_name=to_match.matched_name if to_match else None,
     )

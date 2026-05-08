@@ -119,8 +119,10 @@ async def make_move(
             strikes=strikes,
         )
 
-    # Resolve the next actor's TMDb ID for accurate win detection
-    new_actor = await _resolve_actor(tmdb, body.next_actor)
+    # Resolve the next actor's TMDb ID for accurate win detection.
+    # Use the canonical matched name from validation (not the raw player input)
+    # so that misspellings like "Kat Denings" resolve to "Kat Dennings".
+    new_actor = await _resolve_actor(tmdb, result.to_actor_name or body.next_actor)
 
     # Record the move with the canonical TMDb title
     move = Move(

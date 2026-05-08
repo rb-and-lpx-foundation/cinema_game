@@ -20,6 +20,8 @@ class ValidationResult(BaseModel):
     backdrop_url: str | None = None
     from_actor_found: bool = False
     to_actor_found: bool = False
+    from_actor_name: str | None = None
+    to_actor_name: str | None = None
 
 
 class Actor(BaseModel):
