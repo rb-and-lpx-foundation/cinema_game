@@ -1,7 +1,5 @@
 """Tests for fuzzy actor name matching against cast lists."""
 
-import pytest
-
 from cinema_game_backend.matching import find_actor_in_cast
 
 

@@ -44,8 +44,27 @@ def create_tmdb_client() -> TMDbClient:
         )
 
 
-MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 DB_PATH = "cinema_game.db"
+
+
+def create_llm_provider():
+    """Create an LLM provider for fallback name matching.
+
+    Currently hardcoded to Anthropic. A follow-up PR will make the provider
+    configurable via an environment variable (e.g. LLM_PROVIDER=openai).
+
+    Returns None if ANTHROPIC_API_KEY is not set, in which case validation
+    falls back to fuzzy string matching only.
+    """
+    if not ANTHROPIC_API_KEY:
+        return None
+    from reusable_llm_provider.config import create_anthropic_config
+    from reusable_llm_provider.providers import create_provider
+
+    model = os.getenv("LLM_MODEL", "claude-haiku-4-5-20251001")
+    config = create_anthropic_config(model=model)
+    return create_provider(config)
+
 
 # Hops = number of actor→movie→actor steps.
 # Easy: exactly 2 hops (no movie may repeat).
