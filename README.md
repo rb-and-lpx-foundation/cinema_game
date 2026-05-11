@@ -40,10 +40,22 @@ Requires Python >=3.10, <3.15.
 poetry install
 ```
 
-To also install dev tools (ruff, black, pytest):
+To also install dev tools (ruff, pytest):
 
 ```bash
 poetry install --with dev
+```
+
+To install notebook and visualization dependencies (jupyter, matplotlib, seaborn):
+
+```bash
+poetry install --with notebook
+```
+
+Or install everything:
+
+```bash
+poetry install --with dev,notebook
 ```
 
 ### Configuration
@@ -67,9 +79,9 @@ For local development, `TMDB_CACHE_DISABLE=true` is the simplest option. For pro
 **LangSmith tracing** (optional):
 
 ```
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_API_KEY=...
-LANGCHAIN_PROJECT=cinema-game
+LANGSMITH_TRACING_V2=true
+LANGSMITH_API_KEY=...
+LANGSMITH_PROJECT=cinema-game
 ```
 
 See `secrets/README.md` for more detail.
@@ -161,6 +173,78 @@ See the [frontend repo](https://github.com/ChiPowers/cinema-frontend).
 | `DELETE`  | `/game/{id}/move`                         | Undo the last move                    |
 | `GET`    | `/game/{id}`                              | Get current game state                |
 | `GET`    | `/health`                                 | Health check                          |
+
+## Game session replay
+
+The `experiments` package provides tools for recording and replaying game sessions for regression testing and analysis.
+
+### Recorded game format
+
+A recorded game is a JSON file containing a start actor, end actor, and a list of moves with expected outcomes:
+
+```json
+{
+  "start_actor": "Brad Pitt",
+  "end_actor": "Colin Firth",
+  "moves": [
+    {
+      "movie": "12 Years a Slave",
+      "actor": "Michael Fassbender",
+      "expected": {
+        "valid": true,
+        "movie_id": 76203,
+        "movie_title": "12 Years a Slave",
+        "actor_id": 17288,
+        "actor_name": "Michael Fassbender"
+      }
+    },
+    {
+      "movie": "Batman",
+      "actor": "Jack Nicholson",
+      "expected": { "valid": false }
+    }
+  ]
+}
+```
+
+### Exporting from LangSmith
+
+Games played with LangSmith tracing enabled can be exported into this format:
+
+```python
+from cinema_game_backend.experiments.langsmith_export import list_game_ids, export_game
+
+for g in list_game_ids():
+    print(g["game_id"], g["start_actor"], "->", g["end_actor"])
+
+game = export_game("some-game-id")
+Path("game.json").write_text(game.model_dump_json(indent=2))
+```
+
+### Replaying against live TMDb
+
+Replay a recorded game through `validate_move` and compare actual vs expected outcomes:
+
+```python
+from cinema_game_backend.config import create_tmdb_client
+from cinema_game_backend.experiments.replay import replay_game
+from cinema_game_backend.models.experiment import RecordedGame
+
+game = RecordedGame.model_validate_json(Path("game.json").read_text())
+results = await replay_game(create_tmdb_client(), game)
+
+for r in results:
+    status = "PASS" if r.passed else "FAIL"
+    print(f"[{status}] [{r.move.movie}] {r.move.actor}: {r.detail}")
+```
+
+### Notebook
+
+The `notebooks/replay_game_session.ipynb` notebook provides an interactive workflow for exporting, inspecting, and replaying game sessions. Install notebook dependencies first:
+
+```bash
+poetry install --with notebook
+```
 
 ## Architecture
 
