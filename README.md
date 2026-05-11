@@ -209,10 +209,13 @@ A recorded game is a JSON file containing a start actor, end actor, and a list o
 
 ### Exporting from the database
 
-Games are stored in SQLite. Export a completed game into a `RecordedGame`:
+Games are stored in SQLite. List recent games and export one into a `RecordedGame`:
 
 ```python
-from cinema_game_backend.experiments.export import export_game
+from cinema_game_backend.experiments.export import list_game_ids, export_game
+
+for g in list_game_ids(limit=5):
+    print(g["game_id"], g["start_actor"], "->", g["end_actor"])
 
 game = export_game("some-game-id")
 print(game.model_dump_json(indent=2))
