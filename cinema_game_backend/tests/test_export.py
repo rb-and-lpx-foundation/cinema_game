@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import patch
-from cinema_game_backend.experiments.export import export_game
+from cinema_game_backend.experiments.export import list_game_ids, export_game
 from cinema_game_backend.models.experiment import RecordedGame, ExpectedSuccess
 
 
@@ -57,6 +57,40 @@ def empty_game_dict():
         "strikes": 0,
         "created_at": "2025-01-01 00:00:00",
     }
+
+
+class TestListGameIds:
+    @patch("cinema_game_backend.experiments.export.list_games")
+    def test_empty(self, mock_list):
+        mock_list.return_value = []
+        assert list_game_ids() == []
+
+    @patch("cinema_game_backend.experiments.export.list_games")
+    def test_returns_summary(self, mock_list, sample_game_dict):
+        mock_list.return_value = [sample_game_dict]
+        result = list_game_ids()
+
+        assert len(result) == 1
+        g = result[0]
+        assert g["game_id"] == "abc-123"
+        assert g["difficulty"] == "medium"
+        assert g["start_actor"] == "Brad Pitt"
+        assert g["end_actor"] == "Colin Firth"
+        assert g["status"] == "in_progress"
+        assert g["moves"] == 2
+        assert g["created_at"] == "2025-01-01 00:00:00"
+
+    @patch("cinema_game_backend.experiments.export.list_games")
+    def test_passes_limit(self, mock_list):
+        mock_list.return_value = []
+        list_game_ids(limit=5)
+        mock_list.assert_called_once_with(limit=5)
+
+    @patch("cinema_game_backend.experiments.export.list_games")
+    def test_default_limit_is_none(self, mock_list):
+        mock_list.return_value = []
+        list_game_ids()
+        mock_list.assert_called_once_with(limit=None)
 
 
 class TestExportGame:

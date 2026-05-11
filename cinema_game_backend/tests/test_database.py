@@ -1,7 +1,13 @@
 import sqlite3
 import pytest
 from unittest.mock import patch
-from cinema_game_backend.database import init_db, save_game, load_game, update_game
+from cinema_game_backend.database import (
+    init_db,
+    save_game,
+    load_game,
+    update_game,
+    list_games,
+)
 
 
 def _make_game(game_id="test-123"):
@@ -136,3 +142,35 @@ class TestUpdateGame:
         b = load_game("game-b")
         assert a["status"] == "won"
         assert b["status"] == "in_progress"
+
+
+class TestListGames:
+    def test_empty_database(self):
+        assert list_games() == []
+
+    def test_returns_all_games(self):
+        save_game(_make_game("game-a"))
+        save_game(_make_game("game-b"))
+        games = list_games()
+        assert len(games) == 2
+
+    def test_returns_games_with_correct_fields(self):
+        save_game(_make_game("game-a"))
+        games = list_games()
+        assert games[0]["id"] == "game-a"
+        assert games[0]["start_actor"]["name"] == "Brad Pitt"
+        assert games[0]["difficulty"] == "medium"
+
+    def test_limit(self):
+        save_game(_make_game("game-a"))
+        save_game(_make_game("game-b"))
+        save_game(_make_game("game-c"))
+        games = list_games(limit=2)
+        assert len(games) == 2
+
+    def test_limit_none_returns_all(self):
+        save_game(_make_game("game-a"))
+        save_game(_make_game("game-b"))
+        save_game(_make_game("game-c"))
+        games = list_games(limit=None)
+        assert len(games) == 3
