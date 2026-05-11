@@ -7,6 +7,7 @@ from art_graph.cinema_data_providers.tmdb.client import TMDbClient
 from art_graph.cinema_data_providers.tmdb.config import TMDbConfig
 from art_graph.cinema_data_providers.filters import MovieFilter
 
+from . import directories
 from .env import load_cinema_game_env
 
 load_cinema_game_env()
@@ -44,7 +45,7 @@ def create_tmdb_client() -> TMDbClient:
         )
 
 
-DB_PATH = "cinema_game.db"
+DB_PATH = directories.base("cinema_game.db")
 
 
 def create_llm_provider():
