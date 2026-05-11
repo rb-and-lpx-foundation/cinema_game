@@ -9,7 +9,7 @@ class ExpectedSuccess(BaseModel):
     valid: bool = True
     movie_id: int
     movie_title: str
-    actor_id: int
+    actor_id: int | None = None
     actor_name: str
 
 

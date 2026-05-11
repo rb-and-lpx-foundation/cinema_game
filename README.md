@@ -207,18 +207,15 @@ A recorded game is a JSON file containing a start actor, end actor, and a list o
 }
 ```
 
-### Exporting from LangSmith
+### Exporting from the database
 
-Games played with LangSmith tracing enabled can be exported into this format:
+Games are stored in SQLite. Export a completed game into a `RecordedGame`:
 
 ```python
-from cinema_game_backend.experiments.langsmith_export import list_game_ids, export_game
-
-for g in list_game_ids():
-    print(g["game_id"], g["start_actor"], "->", g["end_actor"])
+from cinema_game_backend.experiments.export import export_game
 
 game = export_game("some-game-id")
-Path("game.json").write_text(game.model_dump_json(indent=2))
+print(game.model_dump_json(indent=2))
 ```
 
 ### Replaying against live TMDb
@@ -228,9 +225,7 @@ Replay a recorded game through `validate_move` and compare actual vs expected ou
 ```python
 from cinema_game_backend.config import create_tmdb_client
 from cinema_game_backend.experiments.replay import replay_game
-from cinema_game_backend.models.experiment import RecordedGame
 
-game = RecordedGame.model_validate_json(Path("game.json").read_text())
 results = await replay_game(create_tmdb_client(), game)
 
 for r in results:
